@@ -82,7 +82,7 @@ function detailOf(s) {
       tone = 'warn';
       break;
     case '답변 생성':
-      box.append(kv('모델', `${MODEL_LABEL[d.model] || d.model} · 프롬프트 ${d.prompt_version}`), kv('모델에 준 근거', Object.entries(d.context || {}).map(([t, c]) => `${t}=${c.split(':').slice(1).join(':')}`).join(', ')));
+      box.append(kv('모델', `${(MODEL_LABEL[d.model] || d.model).replace(/, 프롬프트 v\d/, '')} · 프롬프트 ${d.prompt_version}`), kv('모델에 준 근거', Object.entries(d.context || {}).map(([t, c]) => `${t}=${c.split(':').slice(1).join(':')}`).join(', ')));
       if (d.fallback) { box.append(kv('대체', `모델 출력이 형식에 맞지 않아 추출 답변으로 대체: ${d.fallback}`)); tone = 'warn'; }
       if (d.attempts > 1) { box.append(kv('시도', `${d.attempts}번 만에 형식에 맞는 출력`)); tone = 'warn'; }
       if (d.output) box.append(jsonBox(d.output));
