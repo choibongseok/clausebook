@@ -21,7 +21,7 @@ services:
       LLM_URL: http://llm:8080
       MODEL_BACKEND: ${MODEL_BACKEND:-mock:extractive}
       MODEL_DIR: /models
-    volumes: ["./.models:/models:ro", "./src:/app/src", "./tests:/app/tests", "./eval:/app/eval", "./config:/app/config", "./build:/app/build", "./prompts:/app/prompts", "./data:/app/data", "./scripts:/app/scripts", "./docs:/app/docs", "./pytest.ini:/app/pytest.ini"]
+    volumes: ["./.models:/models:ro", "./src:/app/src", "./tests:/app/tests", "./eval:/app/eval", "./config:/app/config", "./build:/app/build", "./prompts:/app/prompts", "./data:/app/data", "./scripts:/app/scripts", "./docs:/app/docs", "./pytest.ini:/app/pytest.ini", "./README.md:/app/README.md"]
     ports: ["127.0.0.1:58780:8000"]
     depends_on: {db: {condition: service_healthy}}
 volumes:

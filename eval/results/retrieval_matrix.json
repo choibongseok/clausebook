@@ -950,5 +950,5 @@
   "machine": "aarch64",
   "note": "Apple Silicon 호스트 위의 Docker(CPU 추론). 다른 컨테이너가 같이 돌 수 있어 시간은 참고용"
  },
- "elapsed_s": 3.6
+ "elapsed_s": 3.8
 }

@@ -198,7 +198,7 @@ async function renderEval() {
   const bestPass = Math.max(...answers.filter((a) => !a.name.startsWith('mock-s') && !a.name.startsWith('mock-f')).map((a) => a.summary.pass_rate));
   table('#models', ['모델', ...cols.map((c) => c[0]), '응답 p50', '응답 p95', '100건당 예상 비용($)'], answers.map((a) => ({
     best: a.summary.pass_rate === bestPass && !a.name.startsWith('mock-s') && !a.name.startsWith('mock-f'),
-    cells: [MODEL_LABEL[a.name] || a.name, ...cols.map((c) => pct(a.summary[c[1]])), sec(a.summary.latency_ms_p50), sec(a.summary.latency_ms_p95), a.summary.cost_usd_per_100.toFixed(4)],
+    cells: [MODEL_LABEL[a.name] || a.name, ...cols.map((c) => pct(a.summary[c[1]])), sec(a.summary.latency_ms_p50), sec(a.summary.latency_ms_p95), a.backend.startsWith('mock:') ? '-' : a.summary.cost_usd_per_100.toFixed(4)],
   })));
   const cats = Object.keys(answers[0].summary.by_category);
   const catNames = { lookup: '단순 조회', exception: '예외 조항', table: '표 조회', multi: '여러 조항 결합', calc: '계산', followup: '멀티턴 후속', notfound: '답이 문서에 없음', injection: '주입 시도', pii: '개인정보 포함', version: '개정 버전', individual: '개별 심사', claims: '청구 안내', paraphrase: '돌려 말하기' };

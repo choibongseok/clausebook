@@ -39,7 +39,7 @@ def answers_table(ans: dict) -> list[str]:
     rows = ["| 모델 | " + " | ".join(c[0] for c in cols) + " | 응답 p50 | 응답 p95 | 100건당 예상 비용($) |", "|---|" + "---|" * (len(cols) + 3)]
     for name, d in ans.items():
         s = d["summary"]
-        rows.append(f"| {MODEL_KO.get(name, name)} | " + " | ".join(pct(s[k]) for _, k in cols) + f" | {s['latency_ms_p50'] / 1000:.2f}s | {s['latency_ms_p95'] / 1000:.2f}s | {s['cost_usd_per_100']:.4f} |")
+        rows.append(f"| {MODEL_KO.get(name, name)} | " + " | ".join(pct(s[k]) for _, k in cols) + f" | {s['latency_ms_p50'] / 1000:.2f}s | {s['latency_ms_p95'] / 1000:.2f}s | {'-' if d['backend'].startswith('mock:') else format(s['cost_usd_per_100'], '.4f')} |")
     return rows
 
 
