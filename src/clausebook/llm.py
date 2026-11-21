@@ -91,7 +91,7 @@ class MockModel:
         return m.group(1).strip() if m else ""
 
     def chat(self, messages, schema=None, max_tokens=400) -> ChatResult:
-        user = messages[-1]["content"]
+        user = next((m["content"] for m in reversed(messages) if m["content"].startswith("[질문]")), messages[-1]["content"])
         t0 = time.perf_counter()
         if self.profile == "timeout":
             raise LLMTimeout("모의 시간 초과")

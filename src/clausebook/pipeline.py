@@ -379,7 +379,8 @@ class Pipeline:
                     break
                 except schemas.SchemaError as e:
                     last_err = str(e)
-                    flags["llm_retries"] += 1
+                    if attempt < self.cfg.llm_retries:
+                        flags["llm_retries"] += 1
                 except LLMError as e:
                     last_err = str(e)
                     flags["fallback"].append(f"모델 오류: {e}")
@@ -510,7 +511,8 @@ class Pipeline:
                     break
                 except (schemas.SchemaError, tools.ToolError) as e:
                     last = str(e)
-                    flags["llm_retries"] += 1
+                    if attempt < self.cfg.llm_retries:
+                        flags["llm_retries"] += 1
                 except LLMError as e:
                     last = str(e)
                     flags["fallback"].append(f"모델 오류: {e}")

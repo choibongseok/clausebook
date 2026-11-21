@@ -98,7 +98,7 @@ test('WEB-007 | 멀티턴 | 대화 순서 버튼으로 되묻기와 이어진 �
 test('WEB-008 | 처리 순서 | 검색 단계에 찾은 조항과 점수가 있고 막은 요청은 모델 호출이 0회다 | 청약철회 기간 질문, 지시 무시 요청 | 검색 카드에 조항 목록, 막은 요청은 입력 가드 카드와 모델 호출 0회', async ({ page }) => {
   await open(page);
   await scenario(page, /청약철회 기간/);
-  const search = page.locator('#timeline li', { hasText: '검색' }).first();
+  const search = page.locator('#timeline li').filter({ has: page.locator('.step-name', { hasText: /^검색$/ }) });
   await expect(search.locator('.hits li').first()).toContainText('TRM-T#제12조');
   await expect(page.locator('#timeline li .step-name')).toContainText(['입력 가드', '분류', '검색', '근거 충분성', '답변 생성', '답변 검수', '출력 가드']);
   await scenario(page, /지시 무시 요청/);
