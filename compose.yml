@@ -1,0 +1,28 @@
+# 호스트 포트: 58732(PostgreSQL) 58733(모델 서버) 58780(API). 모델 파일은 .models/ 에 두고 읽기 전용으로 마운트한다.
+name: clausebook
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment: {POSTGRES_USER: clausebook, POSTGRES_PASSWORD: clausebook, POSTGRES_DB: clausebook}
+    ports: ["127.0.0.1:58732:5432"]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U clausebook"], interval: 3s, timeout: 3s, retries: 20}
+    volumes: [dbdata:/var/lib/postgresql/data]
+  llm:
+    image: ghcr.io/ggml-org/llama.cpp:server
+    profiles: ["llm"]
+    command: ["-m", "/models/llm/${LLM_FILE:-qwen2.5-0.5b-instruct-q4_k_m.gguf}", "--host", "0.0.0.0", "--port", "8080", "-c", "4096", "-t", "6", "--alias", "${LLM_ALIAS:-qwen2.5-0.5b}"]
+    volumes: ["./.models:/models:ro"]
+    ports: ["127.0.0.1:58733:8080"]
+    healthcheck: {test: ["CMD-SHELL", "curl -sf http://localhost:8080/health || exit 1"], interval: 3s, timeout: 3s, retries: 60}
+  api:
+    build: .
+    environment:
+      DATABASE_URL: postgresql://clausebook:clausebook@db:5432/clausebook
+      LLM_URL: http://llm:8080
+      MODEL_BACKEND: ${MODEL_BACKEND:-mock:extractive}
+      MODEL_DIR: /models
+    volumes: ["./.models:/models:ro", "./src:/app/src", "./tests:/app/tests", "./eval:/app/eval", "./config:/app/config", "./build:/app/build"]
+    ports: ["127.0.0.1:58780:8000"]
+    depends_on: {db: {condition: service_healthy}}
+volumes:
+  dbdata:
