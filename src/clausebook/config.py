@@ -17,7 +17,7 @@ LLM_URL = os.environ.get("LLM_URL", "http://127.0.0.1:58733")
 # mock:<profile> 이면 저장소 안의 모의 모델, llama:<이름> 이면 llama.cpp 서버
 MODEL_BACKEND = os.environ.get("MODEL_BACKEND", "mock:extractive")
 LLM_TIMEOUT_S = float(os.environ.get("LLM_TIMEOUT_S", "90"))
-PROMPT_VERSION = os.environ.get("PROMPT_VERSION", "v1")
+PROMPT_VERSION = os.environ.get("PROMPT_VERSION", "v2")
 
 # 상대 날짜("6개월 전")를 해석할 때 쓰는 기준일. 결과가 실행 날짜에 흔들리지 않게 고정한다.
 REFERENCE_DATE = date.fromisoformat(os.environ.get("REFERENCE_DATE", "2025-11-20"))

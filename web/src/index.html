@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>보험 약관 질의응답 모의 테스트 — Clausebook</title>
+<meta name="description" content="가상 보험 상품 6종의 약관에 대해 묻고 답하는 상담 도우미를 만들고, 검색 품질과 답변을 숫자로 쟀습니다. 미리 돌려 둔 실제 실행 기록으로 한 질문이 처리되는 과정을 볼 수 있습니다.">
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skiplink" href="#p-timeline">본문으로 건너뛰기</a>
+<header class="top">
+  <div class="crumb"><span class="word">clausebook</span><span class="slash">/</span><span class="path">보험 약관 질의응답</span></div>
+  <p class="banner" id="banner" role="note"><strong>기록 재생</strong> 미리 돌려 둔 실제 실행 기록을 보여 줍니다. 이 화면에서 모델이 새로 답하지는 않습니다.</p>
+  <button id="theme" class="ghost" type="button" aria-label="테마 전환(다크/라이트)">◐</button>
+</header>
+
+<main class="grid">
+  <section class="panel hero" aria-labelledby="h-hero">
+    <h1 id="h-hero">보험 약관 질의응답 모의 테스트</h1>
+    <p class="lead">가상 보험 상품 6종의 약관, 상품 설명서, 청구 안내를 읽고 질문에 답하는 상담 도우미를 만들었습니다. 답마다 근거 조항을 붙이고, 약관에 없는 내용은 없다고 답하게 했습니다. 질문 <span id="n-questions">142</span>개로 검색과 답변을 재서 구성별, 모델별 결과를 비교했습니다.</p>
+    <p class="sub">상품, 약관, 고객은 모두 직접 지어낸 예시입니다. 실제 보험사나 약관과 관계가 없습니다.</p>
+    <div class="hero-btns">
+      <button id="tour-start" class="primary" type="button">설명 따라가기</button>
+      <button id="tour-skip" class="ghost2" type="button">직접 해 보기</button>
+    </div>
+  </section>
+
+  <section class="panel controls" id="p-controls" aria-labelledby="h-pick">
+    <h2 id="h-pick" class="ptitle">질문 고르기</h2>
+    <div class="legend" id="lg-basic">보통 질문</div>
+    <div id="sc-basic" class="presets" role="radiogroup" aria-labelledby="lg-basic"></div>
+    <div class="legend" id="lg-hard">일부러 어려운 경우</div>
+    <div id="sc-hard" class="presets" role="radiogroup" aria-labelledby="lg-hard"></div>
+    <div id="turn-box" class="turns" hidden>
+      <span class="legend" id="lg-turn">대화 순서</span>
+      <div id="turns" class="presets" role="radiogroup" aria-labelledby="lg-turn"></div>
+    </div>
+    <p class="sublabel" id="sc-desc"></p>
+  </section>
+
+  <section class="panel result" id="p-result" aria-labelledby="h-res">
+    <h2 id="h-res" class="ptitle">질문과 답</h2>
+    <p class="q" id="q-text"></p>
+    <p class="what" id="verdict-title"></p>
+    <p class="easy" id="answer" role="status"></p>
+    <div id="cites" class="cites" aria-label="근거 조항"></div>
+    <p class="meta" id="meta"></p>
+  </section>
+  <div class="stats" id="p-stats" aria-label="이 질문의 처리 수치"></div>
+
+  <section class="panel tl" id="p-timeline" aria-labelledby="h-tl">
+    <h2 id="h-tl" class="ptitle"><span id="tl-title" tabindex="-1">처리 순서</span> <span class="tag">실행 기록</span></h2>
+    <div class="strip" id="strip" aria-hidden="true"></div>
+    <ol id="timeline" class="timeline" aria-live="polite"></ol>
+  </section>
+
+  <section class="panel src" id="p-src" aria-labelledby="h-src">
+    <h2 id="h-src" class="ptitle">근거 조항 원문</h2>
+    <div id="src-list" class="srclist"></div>
+  </section>
+
+  <section class="panel evalp" id="p-eval" aria-labelledby="h-eval">
+    <h2 id="h-eval" class="ptitle">답변 평가: 모델 비교 <span class="tag">make eval</span></h2>
+    <p class="hint" id="eval-hint"></p>
+    <div class="scroll"><table id="models"><thead></thead><tbody></tbody></table></div>
+    <details id="cat-box"><summary>질문 유형별 통과율</summary><div class="scroll"><table id="cats"><thead></thead><tbody></tbody></table></div></details>
+  </section>
+
+  <section class="panel retr" id="p-retr" aria-labelledby="h-retr">
+    <h2 id="h-retr" class="ptitle">검색 구성 비교 <span class="tag">모델 없이 측정</span></h2>
+    <p class="hint" id="retr-hint"></p>
+    <div class="scroll"><table id="retr"><thead></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="panel env" aria-labelledby="h-env">
+    <h2 id="h-env" class="ptitle">측정 환경과 한계</h2>
+    <ul id="limits" class="plain"></ul>
+  </section>
+
+  <section class="panel glossary" aria-labelledby="h-gl">
+    <details>
+      <summary id="h-gl">용어 풀이</summary>
+      <dl>
+        <dt>Recall@5</dt><dd>정답 조항이 상위 5개 안에 들어온 비율입니다.</dd>
+        <dt>MRR</dt><dd>정답 조항이 몇 번째에 나왔는지의 역수를 평균 낸 값입니다. 1등이면 1, 2등이면 0.5입니다.</dd>
+        <dt>nDCG@5</dt><dd>정답이 앞쪽에 있을수록 높은 점수를 주는 순위 점수입니다. 1이 가장 좋습니다.</dd>
+        <dt>밀집 검색</dt><dd>문장의 뜻을 숫자 벡터로 바꿔 가까운 조항을 찾습니다. 낱말이 달라도 찾을 수 있습니다.</dd>
+        <dt>BM25</dt><dd>질문의 낱말이 조항에 얼마나 들어 있는지로 찾는 방식입니다.</dd>
+        <dt>재정렬</dt><dd>1차로 찾은 후보를 규칙으로 다시 줄 세우는 단계입니다.</dd>
+        <dt>인용 적중률</dt><dd>답이 인용한 조항 중에 정답 조항이 하나라도 있는 비율입니다.</dd>
+        <dt>거짓 거절</dt><dd>답이 있는 질문인데 못 찾았다고 답한 비율입니다.</dd>
+      </dl>
+    </details>
+  </section>
+</main>
+<footer><span>예시 데이터만 씁니다. 이 페이지는 외부 서버에 요청을 보내지 않습니다. 쿠키는 설명을 이미 봤는지 기억하는 cb_tour 하나만 쓰고, 개인 정보는 담지 않습니다.</span></footer>
+
+<aside id="tour" class="tour" aria-labelledby="tour-title" hidden>
+  <div class="tour-head"><span class="mono" id="tour-prog" aria-live="off">1/7</span><button id="tour-collapse" class="ghost2" type="button">접기</button></div>
+  <h2 id="tour-title" tabindex="-1"></h2>
+  <div id="tour-text" aria-live="polite"></div>
+  <p class="look" id="tour-look"></p>
+  <div class="tour-nav">
+    <button id="tour-prev" class="ghost2" type="button">이전</button>
+    <button id="tour-next" class="primary" type="button">다음</button>
+    <button id="tour-auto" class="ghost2" type="button" aria-pressed="false">자동 진행 켜기</button>
+  </div>
+  <p class="hint" id="tour-keys">← → 키로 넘길 수 있습니다.</p>
+</aside>
+<button id="tour-open" class="tour-reopen" type="button" hidden>설명 열기</button>
+<script type="module" src="app.js"></script>
+</body>
+</html>

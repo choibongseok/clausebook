@@ -138,7 +138,7 @@ def cancer_benefit(cancer_type, contract_date, diagnosis_date) -> dict:
     if g < until:
         amt = face // 2
         return {"amount": amt, "steps": [f"계약일 {c}이 {'2025년 7월 1일 이후라 감액기간은 1년' if years == 1 else '2025년 6월 30일 이전이라 감액기간은 2년'}입니다.", f"진단확정일 {g}은 {until} 전이라 50%만 지급합니다."], "headline": f"감액기간 안의 진단이라 {_won(amt)}(50%)가 지급됩니다.", "outcome": "reduced"}
-    return {"amount": face, "steps": [f"감액기간({years}년)이 {until}에 끝났고 진단확정일 {g}은 그 뒤입니다."], "headline": f"일반암 진단비 {_won(face)}가 전액 지급됩니다.", "outcome": "full"}
+    return {"amount": face, "steps": [f"감액기간({years}년)이 {until}에 끝났고 진단확정일 {g}은 그 뒤입니다."], "headline": f"일반암 진단비는 {_won(face)}이 전액 지급됩니다.", "outcome": "full"}
 
 
 def surrender_value(monthly_premium, years_elapsed) -> dict:

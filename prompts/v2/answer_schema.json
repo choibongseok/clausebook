@@ -1,0 +1,26 @@
+{
+ "type": "object",
+ "additionalProperties": false,
+ "properties": {
+  "answer": {
+   "type": "string",
+   "maxLength": 300
+  },
+  "citations": {
+   "type": "array",
+   "items": {
+    "type": "string",
+    "pattern": "^C[0-9]{1,2}$"
+   },
+   "maxItems": 4
+  },
+  "answerable": {
+   "type": "boolean"
+  }
+ },
+ "required": [
+  "answer",
+  "citations",
+  "answerable"
+ ]
+}

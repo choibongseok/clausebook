@@ -53,17 +53,17 @@ class Stage(str, Enum):
 TRANSITIONS: dict[Stage, tuple[Stage, ...]] = {
     Stage.GUARD: (Stage.ROUTE, Stage.OUTPUT),  # 주입이면 곧바로 출력
     Stage.ROUTE: (Stage.CLARIFY, Stage.REWRITE, Stage.TOOL_CALL, Stage.RETRIEVE, Stage.OUTPUT),
-    Stage.CLARIFY: (Stage.OUTPUT,),
     Stage.REWRITE: (Stage.RETRIEVE,),
-    Stage.RETRIEVE: (Stage.VERSION, Stage.GUIDANCE, Stage.CLARIFY),
-    Stage.VERSION: (Stage.GATE, Stage.CLARIFY),
-    Stage.GATE: (Stage.GENERATE, Stage.OUTPUT),
+    Stage.RETRIEVE: (Stage.GATE, Stage.GUIDANCE),
+    Stage.GATE: (Stage.VERSION, Stage.CLARIFY, Stage.OUTPUT),
+    Stage.VERSION: (Stage.CLARIFY, Stage.GUIDANCE, Stage.GENERATE, Stage.OUTPUT),
+    Stage.GUIDANCE: (Stage.GENERATE, Stage.OUTPUT),
     Stage.GENERATE: (Stage.VERIFY,),
     Stage.VERIFY: (Stage.OUTPUT,),
-    Stage.TOOL_CALL: (Stage.TOOL_RUN, Stage.CLARIFY),
-    Stage.TOOL_RUN: (Stage.COMPOSE, Stage.CLARIFY),
+    Stage.CLARIFY: (Stage.OUTPUT,),
+    Stage.TOOL_CALL: (Stage.TOOL_RUN,),
+    Stage.TOOL_RUN: (Stage.COMPOSE, Stage.OUTPUT),
     Stage.COMPOSE: (Stage.OUTPUT,),
-    Stage.GUIDANCE: (Stage.OUTPUT,),
     Stage.OUTPUT: (Stage.DONE,),
 }
 
@@ -327,7 +327,10 @@ class Pipeline:
         raw, gen_info = self._generate_answer(q, st, context, steps, flags, usage, on_step)
         with self.step(steps, Stage.VERIFY, on_step) as d:
             ctx_text = {t: h.chunk.text for t, h in context.items()}
-            if raw.get("answerable") is False:
+            says_no = raw.get("answerable") is False and (not raw["answer"].strip() or "찾지 못했" in raw["answer"])
+            if raw.get("answerable") is False and not says_no:
+                d["answerable_flag_ignored"] = True  # 소형 모델은 이 값을 자주 틀려서, 답이 적혀 있으면 검수 결과를 따른다
+            if says_no:
                 v_text, cites, dropped = NOT_FOUND, [], []
                 d["model_said_unanswerable"] = True
             else:
@@ -362,15 +365,16 @@ class Pipeline:
         user = f"[질문]\n{q}\n\n[알려진 조건]\n{self._slots_block(st)}\n\n[근거]\n{body}"
         messages = [{"role": "system", "content": self.prompt("answer")}, {"role": "user", "content": user}]
         info = {}
+        schema = schemas.load_answer_schema(self.cfg.prompt_version)
         with self.step(steps, Stage.GENERATE, on_step) as d:
             d.update({"model": self.llm.name, "prompt_version": self.cfg.prompt_version, "context": {t: h.chunk.id for t, h in context.items()}})
             raw = None
             last_err = ""
             for attempt in range(self.cfg.llm_retries + 1):
                 try:
-                    res = self.llm.chat(messages if attempt == 0 else [*messages, {"role": "user", "content": f"이전 출력이 형식에 맞지 않았습니다({last_err}). 스키마에 맞는 JSON 하나만 다시 출력하세요."}], schemas.ANSWER_SCHEMA, self.cfg.max_tokens)
+                    res = self.llm.chat(messages if attempt == 0 else [*messages, {"role": "user", "content": f"이전 출력이 형식에 맞지 않았습니다({last_err}). 스키마에 맞는 JSON 하나만 다시 출력하세요."}], schema, self.cfg.max_tokens)
                     self._count(usage, res)
-                    raw = schemas.validate(schemas.parse_json(res.text), schemas.ANSWER_SCHEMA)
+                    raw = schemas.validate(schemas.parse_json(res.text), schema)
                     d["attempts"] = attempt + 1
                     break
                 except schemas.SchemaError as e:
@@ -382,7 +386,7 @@ class Pipeline:
                     break
             if raw is None:
                 flags["fallback"].append("추출 답변으로 대체")
-                res = self.fallback_llm.chat(messages, schemas.ANSWER_SCHEMA)
+                res = self.fallback_llm.chat(messages, schema)
                 raw = schemas.parse_json(res.text)
                 d["fallback"] = last_err or "형식 오류"
             d["output"] = raw

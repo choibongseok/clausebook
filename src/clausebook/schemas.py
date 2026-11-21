@@ -7,16 +7,14 @@ from typing import Any
 
 import jsonschema
 
-ANSWER_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "additionalProperties": False,
-    "properties": {
-        "answerable": {"type": "boolean"},
-        "answer": {"type": "string", "maxLength": 900},
-        "citations": {"type": "array", "items": {"type": "string", "pattern": "^C[0-9]{1,2}$"}, "maxItems": 6},
-    },
-    "required": ["answerable", "answer", "citations"],
-}
+def load_answer_schema(version: str) -> dict[str, Any]:
+    """프롬프트 버전 폴더의 출력 스키마(prompts/<버전>/answer_schema.json)를 읽는다."""
+    from .config import PROMPT_DIR
+
+    return json.loads((PROMPT_DIR / version / "answer_schema.json").read_text(encoding="utf-8"))
+
+
+ANSWER_SCHEMA: dict[str, Any] = load_answer_schema("v2")
 
 
 def tool_call_schema(tool_defs: list[dict]) -> dict[str, Any]:
