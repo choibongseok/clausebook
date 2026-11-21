@@ -8,12 +8,12 @@ from typing import Any
 from .config import REFERENCE_DATE
 
 PRODUCT_ALIASES = {
-    "SIL": ["실손", "한결"],
-    "TRM": ["정기보험", "든든"],
-    "CAN": ["암진단", "암 진단", "마음 암", "마음암"],
-    "DRV": ["운전자", "길동무"],
-    "KID": ["어린이", "새싹", "태아"],
-    "TRV": ["여행자", "나래", "여행"],
+    "SIL": ["한결", "실손"],
+    "TRM": ["든든", "정기보험"],
+    "CAN": ["마음 암", "마음암", "암진단보험", "암보험"],
+    "DRV": ["길동무", "운전자보험", "운전자 보험"],
+    "KID": ["새싹", "어린이보험", "어린이 보험"],
+    "TRV": ["나래", "여행자보험", "여행자 보험"],
 }
 PRODUCT_NAMES = {"SIL": "한결 실손의료보험", "TRM": "든든 정기보험", "CAN": "마음 암진단보험", "DRV": "길동무 운전자보험", "KID": "새싹 어린이보험", "TRV": "나래 여행자보험"}
 _CANCER_HINT = re.compile(r"암|갑상선|제자리|경계성")
@@ -21,6 +21,12 @@ _CANCER_HINT = re.compile(r"암|갑상선|제자리|경계성")
 _DATE_FULL = re.compile(r"(\d{4})\s*[-./년]\s*(\d{1,2})\s*(?:[-./월]\s*(\d{1,2})\s*일?|월)?")
 _REL = re.compile(r"(\d+)\s*(개월|달|년|주|일)\s*전")
 _MONEY = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(억|만\s*원|만원|천\s*원|천원|만|원)")
+_MONEY_ROLES = [
+    ("uncovered", re.compile(r"비급여")),
+    ("covered_copay", re.compile(r"급여|본인\s*부담")),
+    ("monthly_premium", re.compile(r"월\s*보험료|월\s*납|매월|월\s*$|^\s*월|보험료")),
+    ("purchase_price", re.compile(r"구입|구매|샀|가격|사서|주고")),
+]
 _YEARS = re.compile(r"(?<!\d)(\d{1,2})\s*년(?!\s*\d)\s*(?:째|차|동안|간|정도|쯤)?")
 
 
@@ -50,6 +56,10 @@ def find_dates(text: str) -> list[tuple[int, int, date]]:
             out.append((m.start(), m.end(), date(y, mo, d)))
         except ValueError:
             continue
+    for m in re.finditer(r"(?<!\d)(\d{4})\s*년(?!\s*\d|\s*(?:도\s*)?\d+\s*월)(?!\s*[-./]?\s*\d)", text):
+        y = int(m.group(1))
+        if y != 2025 and not any(a <= m.start() < b for a, b, _ in out):  # 2025년은 7월 1일 기준이 걸려 있어 연도만으로는 정하지 않는다
+            out.append((m.start(), m.end(), date(y, 1, 1)))
     for m in _REL.finditer(text):
         n, unit = int(m.group(1)), m.group(2)
         days = {"개월": 30, "달": 30, "년": 365, "주": 7, "일": 1}[unit] * n
@@ -84,15 +94,18 @@ def extract(text: str) -> dict[str, Any]:
             s.setdefault("_unassigned_date", d.isoformat())
     for m in _MONEY.finditer(text):
         v = parse_money(m.group(1), m.group(2))
-        ctx_b, ctx_a = text[max(0, m.start() - 12):m.start()], text[m.end():m.end() + 10]
-        if re.search(r"비급여", ctx_b + ctx_a) and "uncovered" not in s:
-            s["uncovered"] = v
-        elif re.search(r"급여|본인\s*부담", ctx_b + ctx_a) and "covered_copay" not in s:
-            s["covered_copay"] = v
-        elif re.search(r"월|보험료|납입", ctx_b + ctx_a) and "monthly_premium" not in s:
-            s["monthly_premium"] = v
-        elif re.search(r"구입|구매|샀|가격|사서", ctx_b + ctx_a) and "purchase_price" not in s:
-            s["purchase_price"] = v
+        before = re.split(r"[,.;]", text[max(0, m.start() - 14):m.start()])[-1]
+        after = re.split(r"[,.;\d]", text[m.end():m.end() + 10])[0]
+        role = None
+        for window in (before, after):
+            for r, rx in _MONEY_ROLES:
+                if rx.search(window) and r not in s:
+                    role = r
+                    break
+            if role:
+                break
+        if role:
+            s[role] = v
         else:
             s.setdefault("_loose_money", []).append(v)
     ym = _YEARS.search(re.sub(r"\d{4}\s*년", "", text))
