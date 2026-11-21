@@ -1,0 +1,9 @@
+.models/
+build/
+.test-results/
+__pycache__/
+*.pyc
+.pytest_cache/
+web/node_modules/
+web/test-results/
+web/dist/

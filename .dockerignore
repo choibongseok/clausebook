@@ -1,0 +1,6 @@
+.git
+.models
+build
+web/node_modules
+web/dist
+.test-results
