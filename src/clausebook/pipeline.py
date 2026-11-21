@@ -77,7 +77,7 @@ PRODUCT_LIST = "한결 실손의료보험, 든든 정기보험, 마음 암진단
 @dataclass
 class PipelineConfig:
     strategy: str = "clause_ctx"
-    method: str = "hybrid_rrf"
+    method: str = "dense"
     rerank: str = "rule"
     k_context: int = 4
     use_filter: bool = True
@@ -261,7 +261,7 @@ class Pipeline:
                 q = f"{st['last_question']} {text}"
                 d["rewritten"] = True
             d["query"] = q
-        doc_types = ["claims", "terms", "faq"] if route.intent == "claim_docs" else None
+        doc_types = ["claims", "faq"] if route.intent == "claim_docs" else None
         f = self._filters(st, doc_types)
         with self.step(steps, Stage.RETRIEVE, on_step) as d:
             hits = self.r.search(q, cfg.strategy, cfg.method, cfg.rerank, 6, f)
@@ -270,6 +270,16 @@ class Pipeline:
                       "hits": [{"id": h.chunk.clause_ids[0] if h.chunk.clause_ids else h.chunk.id, "chunk": h.chunk.id, "score": round(h.score, 4),
                                 "parts": {k: round(v, 4) for k, v in h.parts.items()}} for h in hits]})
             flags["cache"] = self.r.cache.stats()
+        # 근거 충분성
+        th = thresholds()
+        with self.step(steps, Stage.GATE, on_step) as d:
+            cov = max((self.r.coverage(q, h, cfg.strategy) for h in hits[:3]), default=0.0)
+            dense = max((h.parts.get("dense", 1.0) for h in hits[:3]), default=0.0)
+            ok = bool(hits) and (cov >= th["min_coverage"] or dense >= th["min_dense"])
+            d.update({"coverage": round(cov, 3), "dense": round(dense, 3), "threshold": {"min_coverage": th["min_coverage"], "min_dense": th["min_dense"]}, "pass": ok})
+        if not ok:
+            st["last_question"] = text
+            return NOT_FOUND + " 질문하신 내용이 약관·설명서·청구 안내에 있는지 확인해 보았지만 근거가 되는 조항이 없습니다.", "not_found", []
         # 상품이 없고 결과가 여러 상품에 갈리면 되묻는다
         if not st.get("product") and hits:
             top = hits[:3]
@@ -282,25 +292,21 @@ class Pipeline:
         # 개정 버전 확인
         with self.step(steps, Stage.VERSION, on_step) as d:
             versioned = [h for h in hits[:4] if h.chunk.eff_from or h.chunk.eff_to]
+            top2_versioned = any(h.chunk.eff_from or h.chunk.eff_to for h in hits[:2])
             labels = {}
             for h in versioned:
                 for cid in h.chunk.clause_ids:
                     labels.setdefault(cid.split("@")[0], set()).add(cid)
-            conflict = [k for k, v in labels.items() if len(v) >= 2]
+            conflict = []
+            if top2_versioned:
+                for base in {cid.split("@")[0] for h in versioned[:2] for cid in h.chunk.clause_ids if "@" in cid}:
+                    if len([c for c in self.clauses if c.split("@")[0] == base and "@" in c]) >= 2:
+                        conflict.append(base)
             d.update({"versioned_hits": [h.chunk.id for h in versioned], "conflict": conflict, "as_of": st.get("join_date")})
-        if conflict and not st.get("join_date") and self.cfg.use_filter:
+        if conflict and not st.get("join_date") and self.cfg.use_filter and route.intent != "claim_docs":
             st["pending"] = {"kind": "version", "question": text, "cutoff": "2025-07-01"}
             return "계약을 체결한 날짜에 따라 적용되는 조항이 다릅니다. 2025년 7월 1일 이전에 가입하셨나요, 이후에 가입하셨나요? 가입 날짜를 알려 주셔도 됩니다.", "clarify", []
         st["pending"] = None if (st.get("pending") or {}).get("kind") != "calc" else st["pending"]
-        # 근거 충분성
-        th = thresholds()
-        with self.step(steps, Stage.GATE, on_step) as d:
-            cov = max((self.r.coverage(q, h, cfg.strategy) for h in hits[:3]), default=0.0)
-            ok = bool(hits) and cov >= th["min_coverage"]
-            d.update({"coverage": round(cov, 3), "threshold": th["min_coverage"], "pass": ok})
-        if not ok:
-            st["last_question"] = text
-            return NOT_FOUND + " 질문하신 내용이 약관·설명서·청구 안내에 있는지 확인해 보았지만 근거가 되는 조항이 없습니다.", "not_found", []
         # 답변 생성
         ctx_hits = []
         for h in hits:
@@ -352,7 +358,7 @@ class Pipeline:
         return "\n".join(lines) or "- (없음)"
 
     def _generate_answer(self, q, st, context: dict[str, Hit], steps, flags, usage, on_step) -> tuple[dict, dict]:
-        body = "\n".join(f"[{t}] {h.chunk.id}\n{h.chunk.display}\n" for t, h in context.items())
+        body = "\n".join(f"[{t}] {h.chunk.id}\n{h.chunk.text}\n" for t, h in context.items())
         user = f"[질문]\n{q}\n\n[알려진 조건]\n{self._slots_block(st)}\n\n[근거]\n{body}"
         messages = [{"role": "system", "content": self.prompt("answer")}, {"role": "user", "content": user}]
         info = {}

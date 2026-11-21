@@ -1,0 +1,7 @@
+{
+ "min_coverage": 0.7,
+ "min_dense": 0.895,
+ "balanced_accuracy_dev": 1.0,
+ "n_dev": 37,
+ "chosen_on": "split=dev"
+}

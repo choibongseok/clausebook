@@ -129,7 +129,7 @@ def cancer_benefit(cancer_type, contract_date, diagnosis_date) -> dict:
     start = c + timedelta(days=90)  # 계약일 포함 90일이 지난 다음 날부터 보장
     face = 30_000_000
     if g < start:
-        return {"amount": 0, "steps": [f"계약일 {c} 포함 90일 대기기간은 {start - timedelta(days=1)}까지입니다.", f"진단확정일 {g}은 대기기간 안이라 계약이 무효가 되고 낸 보험료를 돌려줍니다."], "headline": "대기기간 안의 진단이라 진단비는 지급되지 않고 보험료를 돌려받습니다.", "outcome": "void"}
+        return {"amount": 0, "steps": [f"계약일 {c} 포함 90일 대기기간은 {start - timedelta(days=1)}까지입니다.", f"진단확정일 {g}은 대기기간 안이라 계약이 무효가 되고 낸 보험료를 돌려줍니다."], "headline": "예상 진단비는 0원입니다. 대기기간 안의 진단이라 계약이 무효가 되고 낸 보험료를 돌려받습니다.", "outcome": "void"}
     if cancer_type == "유사암":
         amt = face * 20 // 100
         return {"amount": amt, "steps": [f"유사암은 가입금액 {_won(face)}의 20%입니다.", "감액 규정(제5조)은 일반암에만 적용됩니다."], "headline": f"유사암 진단비는 {_won(amt)}입니다.", "outcome": "similar"}

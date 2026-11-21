@@ -30,4 +30,4 @@ def thresholds() -> dict:
     p = CONFIG_DIR / "thresholds.json"
     if p.exists():
         return json.loads(p.read_text(encoding="utf-8"))
-    return {"min_coverage": 0.34, "min_dense": 0.0}
+    return {"min_coverage": 0.8, "min_dense": 0.88}

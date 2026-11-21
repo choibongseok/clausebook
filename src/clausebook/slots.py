@@ -67,14 +67,27 @@ def find_dates(text: str) -> list[tuple[int, int, date]]:
     return sorted(out)
 
 
+_DIAG = re.compile(r"진단|발병|확정")
+_JOIN = re.compile(r"가입|계약|체결|청약|들었|든 ")
+
+
 def _role_of_date(text: str, start: int, end: int, nxt: int) -> str | None:
-    after = text[end:min(nxt, end + 24)]
-    before = text[max(0, start - 14):start]
-    for window in (after, before):
-        if re.search(r"진단|발병|확정", window):
+    """날짜 가까이에 있는 낱말로 가입일인지 진단일인지 정한다(상품 이름 속 '진단'은 세지 않는다)."""
+    clean = lambda s: re.sub(r"암\s*진단\s*보험", "암보험", s)
+    after = clean(text[end:min(nxt, end + 24)])
+    before = clean(text[max(0, start - 14):start])
+    d = _DIAG.search(after)
+    j = _JOIN.search(after)
+    if d or j:
+        if d and (not j or d.start() < j.start()):
             return "diagnosis_date"
-        if re.search(r"가입|계약|체결|청약|들었|든 ", window):
-            return "join_date"
+        return "join_date"
+    d = list(_DIAG.finditer(before))
+    j = list(_JOIN.finditer(before))
+    if d or j:
+        if d and (not j or d[-1].start() > j[-1].start()):
+            return "diagnosis_date"
+        return "join_date"
     return None
 
 

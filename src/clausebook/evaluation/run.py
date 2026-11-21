@@ -26,7 +26,7 @@ RESULTS = ROOT / "eval" / "results"
 # 예상 비용 계산식의 가정 단가(달러, 100만 토큰당). 실제 요금표가 아니라 호스팅 소형 모델 가격대를 가정한 값이다.
 PRICE_IN, PRICE_OUT = 0.10, 0.40
 
-RETRIEVAL_CATS = {"lookup", "exception", "table", "multi", "followup", "claims", "version", "pii"}
+RETRIEVAL_CATS = {"lookup", "exception", "table", "multi", "followup", "claims", "version", "pii", "paraphrase"}
 
 
 def load_dataset(split: str | None = None) -> list[dict]:
@@ -79,7 +79,11 @@ def run_matrix(retriever) -> dict:
     for s in STRATEGIES:
         for m in METHODS:
             for r in RERANKERS:
-                out.append(run_retrieval(retriever, s, m, r, True, rows))
+                full = run_retrieval(retriever, s, m, r, True, rows)
+                for sp in ("dev", "test"):
+                    part = run_retrieval(retriever, s, m, r, True, [x for x in rows if x["split"] == sp])
+                    full[sp] = {k: part[k] for k in ("n", "recall@1", "recall@5", "mrr", "ndcg@5")}
+                out.append(full)
     nofilter = [run_retrieval(retriever, "clause_ctx", m, "rule", False, rows) for m in ("dense", "hybrid_rrf")]
     return {"kind": "retrieval_matrix", "dataset": {"file": "eval/dataset.jsonl", "n_items": len(rows), "n_retrieval_items": len(retrieval_items(rows))},
             "k": 5, "configs": out, "filter_ablation": nofilter, "env": env_info(), "elapsed_s": round(time.time() - t0, 1)}

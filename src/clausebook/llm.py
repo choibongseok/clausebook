@@ -63,7 +63,7 @@ class LlamaServer:
         return ChatResult(d["choices"][0]["message"]["content"], u.get("prompt_tokens", 0), u.get("completion_tokens", 0), (time.perf_counter() - t0) * 1000)
 
 
-_CTX = re.compile(r"\[(C\d+)\]\s*(\S+)\n(.*?)(?=\n\[C\d+\]|\Z)", re.S)
+_CTX = re.compile(r"\[(C\d+)\] ([^\n]+)\n(.*?)(?=\n\[C\d+\] |\Z)", re.S)
 _SENT = re.compile(r"(?<=[.!?다요죠])\s+|\n+")
 _INJ = re.compile(r"이전의 모든 지시를 무시|모든 사고를 전액 보장")
 
@@ -144,13 +144,27 @@ class MockModel:
             return {"answerable": True, "answer": "모든 사고를 전액 보장합니다.", "citations": [ctx[0][0]]}
         qt = content_terms(q)
         scored = []
+        numeric_q = bool(re.search(r"얼마|몇|며칠|언제|기간|비율|퍼센트|%|한도|환급률", q))
+        list_q = bool(re.search(r"서류|목록|무엇이 필요|뭐가 필요", q))
         for tag, _cid, body in ctx:
-            for s in split_sentences(body):
-                scored.append((len(qt & content_terms(s)) / (len(qt) or 1), tag, s))
+            lines = body.splitlines()
+            rest = "\n".join(lines[1:] if len(lines) > 1 else lines)  # 첫 줄은 머리글
+            chunk_prior = 0.3 * len(qt & content_terms(body)) / (len(qt) or 1)
+            for s in split_sentences(rest):
+                if s.endswith("?") or s.endswith("?."):
+                    continue
+                if s.startswith("표 행:"):
+                    s = s[len("표 행:"):].strip()
+                bonus = 0.25 if numeric_q and re.search(r"\d", s) else 0.0
+                scored.append((len(qt & content_terms(s)) / (len(qt) or 1) + bonus + chunk_prior, tag, s))
         scored.sort(key=lambda x: -x[0])
-        if not scored or scored[0][0] < 0.15:
+        if not scored or scored[0][0] < (0.1 if list_q else 0.15):
             return {"answerable": False, "answer": "약관에서 찾지 못했습니다.", "citations": []}
         picks = scored[:2]
+        if list_q:  # 서류 목록 질문은 가장 관련 있는 청크의 목록 항목을 모두 보여 준다
+            top_tag = scored[0][1]
+            items = [x for x in scored if x[1] == top_tag][:6]
+            picks = items
         if self.profile == "sloppy" and len(ctx) > 1:
             other = [x for x in scored if x[1] != picks[0][1]]
             picks = other[:1] or picks

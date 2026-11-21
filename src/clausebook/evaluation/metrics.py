@@ -32,9 +32,15 @@ def mrr(ranked: list[list[str]], gold: list[list[str]]) -> float:
 
 
 def ndcg_at_k(ranked: list[list[str]], gold: list[list[str]], k: int) -> float:
-    """이진 관련도. 청크가 정답 조항을 하나라도 덮으면 1. 이상적인 순서는 정답 묶음 수만큼 앞에 관련 청크가 오는 것."""
-    allg = [x for g in gold for x in g]
-    dcg = sum((1.0 if covers(c, allg) else 0.0) / math.log2(i + 1) for i, c in enumerate(ranked[:k], 1))
+    """이진 관련도. 정답 묶음마다 처음 덮은 청크만 1점(같은 조항을 덮는 청크가 여럿이어도 중복 점수 없음).
+    이상적인 순서는 정답 묶음 수만큼 맨 앞에 오는 것."""
+    left = [set(g) for g in gold]
+    dcg = 0.0
+    for i, c in enumerate(ranked[:k], 1):
+        hit = next((g for g in left if any(x in g for x in c)), None)
+        if hit is not None:
+            left.remove(hit)
+            dcg += 1.0 / math.log2(i + 1)
     ideal = sum(1.0 / math.log2(i + 1) for i in range(1, min(len(gold), k) + 1))
     return dcg / ideal if ideal else 0.0
 
